@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       }
     `;
 
-    console.log('Fetching warehouses with client token...');
+    console.log('Fetching warehouses with client token:', accessToken.substring(0, 20) + '...');
 
     const response = await fetch('https://public-api.shiphero.com/graphql', {
       method: 'POST',
@@ -58,18 +58,25 @@ export async function GET(request: NextRequest) {
       body: JSON.stringify({ query })
     });
 
+    console.log('ShipHero API response status:', response.status);
+
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('ShipHero API error:', errorText);
+      throw new Error(`ShipHero API error ${response.status}: ${response.statusText}`);
     }
 
     const result = await response.json();
+    console.log('Raw ShipHero response:', JSON.stringify(result, null, 2));
     
     if (result.errors) {
+      console.error('GraphQL errors:', result.errors);
       throw new Error(result.errors[0].message);
     }
 
     if (!result.data?.account?.data) {
-      throw new Error('No account data returned');
+      console.error('No account data in response:', result);
+      throw new Error('No account data returned from ShipHero API');
     }
 
     console.log('Warehouses fetched successfully:', result.data.account.data.warehouses.length);

@@ -64,16 +64,23 @@ interface FlatInventoryItem {
 }
 
 export default function InventoryPage() {
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [loadingProgress, setLoadingProgress] = useState('')
   const [flatInventory, setFlatInventory] = useState<FlatInventoryItem[]>([])
   const [sortField, setSortField] = useState<SortField>('warehouse')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [loadDuration, setLoadDuration] = useState<number>(0)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [inventoryData, setInventoryData] = useState<CombinedInventoryData | null>(null)
+  const [hasSearched, setHasSearched] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
-    loadInventory()
+    // Check if user is authenticated
+    const authenticated = AuthManager.isAuthenticated()
+    setIsAuthenticated(authenticated)
+    
+    // Don't auto-load - wait for user to click load button
   }, [])
 
   const loadInventory = async () => {
