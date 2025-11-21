@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Package, Download, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw } from 'lucide-react'
+import { Package, Download, RefreshCw } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { AuthManager } from '@/lib/auth-manager'
 
 interface FlatInventoryItem {
   warehouse: string
