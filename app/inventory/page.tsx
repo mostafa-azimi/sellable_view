@@ -48,21 +48,25 @@ export default function InventoryPage() {
       return
     }
 
+    const customerAccountId = CustomerManager.getCustomerAccountId()
+    
+    if (!customerAccountId) {
+      toast({
+        title: 'Customer account required',
+        description: 'Please select a customer account in Settings first',
+        variant: 'destructive',
+      })
+      return
+    }
+
     setIsLoading(true)
     
     try {
-      const customerAccountId = CustomerManager.getCustomerAccountId()
-      
-      console.log('🚀 Loading inventory via SERVER endpoint with client token...')
+      console.log('🚀 Loading inventory for customer:', customerAccountId)
       console.log('Token:', accessToken.substring(0, 20) + '...')
-      console.log('Customer filter:', customerAccountId || 'All customers')
       
-      // Build URL with customer_account_id if selected
-      const url = customerAccountId 
-        ? `/api/shiphero/warehouses?customer_account_id=${encodeURIComponent(customerAccountId)}`
-        : '/api/shiphero/warehouses'
+      const url = `/api/shiphero/inventory?customer_account_id=${encodeURIComponent(customerAccountId)}`
       
-      // Call OUR server endpoint with Authorization header containing client's token
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -87,33 +91,33 @@ export default function InventoryPage() {
       }
 
       const result = await response.json()
-      console.log('📦 Warehouses received:', result.data?.length || 0)
+      console.log('📦 Inventory items received:', result.data?.length || 0)
 
       if (!result.success) {
-        throw new Error(result.error || 'Failed to load warehouses')
+        throw new Error(result.error || 'Failed to load inventory')
       }
 
-      // For now, just show warehouse data to verify it works
-      const warehouseData: FlatInventoryItem[] = result.data.map((warehouse: any) => ({
-        warehouse: warehouse.identifier,
-        location: warehouse.address?.city || 'N/A',
-        zone: warehouse.address?.state || 'N/A',
-        pickable: true,
-        sellable: true,
-        sku: `WAREHOUSE-${warehouse.legacy_id}`,
-        productName: warehouse.address?.name || 'Warehouse',
-        quantity: 0,
-        barcode: undefined,
+      // Transform to flat table format
+      const flatData: FlatInventoryItem[] = result.data.map((item: any) => ({
+        warehouse: item.warehouse,
+        location: item.location,
+        zone: item.location.split('-')[0] || 'Unknown',
+        pickable: item.pickable,
+        sellable: item.sellable,
+        sku: item.sku,
+        productName: item.productName,
+        quantity: item.quantity,
+        barcode: item.barcode,
       }))
 
-      setFlatInventory(warehouseData)
+      setFlatInventory(flatData)
       
       toast({
-        title: 'Warehouses loaded',
-        description: `${warehouseData.length} warehouses loaded successfully`,
+        title: 'Inventory loaded',
+        description: `${flatData.length} inventory items loaded for ${selectedCustomer?.name || 'customer'}`,
       })
 
-      console.log('🎉 SUCCESS! Loaded', warehouseData.length, 'warehouses')
+      console.log('🎉 SUCCESS! Loaded', flatData.length, 'inventory items')
 
     } catch (error: any) {
       console.error('💥 Error:', error)
