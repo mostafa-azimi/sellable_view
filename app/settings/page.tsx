@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { AuthManager } from '@/lib/auth-manager'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,6 +21,8 @@ export default function SettingsPage() {
   const [copiedAuth, setCopiedAuth] = useState(false)
   const [copiedTest, setCopiedTest] = useState(false)
   const [showTestToken, setShowTestToken] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [timeRemaining, setTimeRemaining] = useState<string | null>(null)
 
   const { toast } = useToast()
 
@@ -28,6 +31,18 @@ export default function SettingsPage() {
     const saved = localStorage.getItem('shiphero_refresh_token')
     if (saved) {
       setRefreshToken(saved)
+    }
+
+    // Check if already authenticated
+    const authenticated = AuthManager.isAuthenticated()
+    setIsAuthenticated(authenticated)
+    
+    if (authenticated) {
+      const savedToken = AuthManager.getValidToken()
+      if (savedToken) {
+        setAuthToken(savedToken)
+        setTimeRemaining(AuthManager.getTimeRemaining())
+      }
     }
   }, [])
 
@@ -71,14 +86,22 @@ export default function SettingsPage() {
         throw new Error(data.error || 'Failed to generate token')
       }
 
+      // Save to AuthManager for 28 days
+      AuthManager.saveAuth(data.accessToken, data.expiresIn, refreshToken)
+      
       setAuthToken(data.accessToken)
+      setIsAuthenticated(true)
       
       const expiryDate = new Date(Date.now() + data.expiresIn * 1000)
       setTokenExpiry(expiryDate.toLocaleString())
+      setTimeRemaining(AuthManager.getTimeRemaining())
+      
+      // Save refresh token for convenience  
+      localStorage.setItem('shiphero_refresh_token', refreshToken)
       
       toast({
-        title: 'Access token generated',
-        description: 'Successfully generated access token from refresh token',
+        title: 'Authentication successful',
+        description: 'Access token saved for 28 days. You can now use the inventory page.',
       })
     } catch (error: any) {
       toast({
@@ -95,10 +118,14 @@ export default function SettingsPage() {
     setRefreshToken('')
     setAuthToken('')
     setTokenExpiry('')
+    setTimeRemaining(null)
+    setIsAuthenticated(false)
     localStorage.removeItem('shiphero_refresh_token')
+    AuthManager.clearAuth()
+    
     toast({
-      title: 'Tokens cleared',
-      description: 'All tokens have been cleared',
+      title: 'Authentication cleared',
+      description: 'All tokens have been cleared. You will need to re-authenticate.',
     })
   }
 
@@ -223,33 +250,43 @@ export default function SettingsPage() {
             </Button>
           </div>
 
-          {/* Generated Access Token */}
-          {authToken && (
-            <div className="space-y-2 pt-4 border-t">
-              <Label htmlFor="auth-token">Generated Access Token</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="auth-token"
-                  type="text"
-                  value={authToken}
-                  readOnly
-                  className="font-mono text-sm"
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => copyToClipboard(authToken, 'auth')}
-                >
-                  {copiedAuth ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                </Button>
+          {/* Authentication Status */}
+          {isAuthenticated && (
+            <div className="space-y-3 pt-4 border-t bg-green-50 dark:bg-green-950/20 rounded-lg p-4">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="font-medium text-green-800 dark:text-green-200">
+                  Authenticated
+                </span>
               </div>
-              {tokenExpiry && (
-                <p className="text-sm text-gray-500">
-                  Expires: {tokenExpiry}
+              {timeRemaining && (
+                <p className="text-sm text-green-700 dark:text-green-300">
+                  Token expires in: {timeRemaining}
                 </p>
               )}
-              <p className="text-sm text-green-600 font-medium">
-                Ready for API access
+              {authToken && (
+                <div className="space-y-2">
+                  <Label htmlFor="auth-token" className="text-sm">Access Token</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="auth-token"
+                      type="text"
+                      value={authToken.substring(0, 30) + '...'}
+                      readOnly
+                      className="font-mono text-xs"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => copyToClipboard(authToken, 'auth')}
+                    >
+                      {copiedAuth ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    </Button>
+                  </div>
+                </div>
+              )}
+              <p className="text-xs text-green-600 dark:text-green-400">
+                Ready to access inventory data
               </p>
             </div>
           )}

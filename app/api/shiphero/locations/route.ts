@@ -48,9 +48,8 @@ function decodeLocationName(name: string): string {
  * More efficient than locations query according to ShipHero docs
  */
 async function fetchAllWarehouseProducts(
-  client: any,
-  variables: any,
-  customerAccountId?: string
+  accessToken: string,
+  variables: any
 ): Promise<any[]> {
   const allProducts: any[] = [];
   let hasNextPage = true;
@@ -117,25 +116,44 @@ async function fetchAllWarehouseProducts(
       ...variables,
       first: 50, // Fetch 50 products per page
       after: afterCursor,
-      customer_account_id: customerAccountId,
     };
 
     console.log(`Fetching page ${pageCount}${afterCursor ? ` (cursor: ${afterCursor.substring(0, 20)}...)` : ''}`);
 
-    const response = await client.query<{
-      warehouse_products: QueryResult<Connection<any>>;
-    }>(query, pageVariables);
+    const response = await fetch('https://public-api.shiphero.com/graphql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      },
+      body: JSON.stringify({ 
+        query, 
+        variables: pageVariables 
+      })
+    });
 
-    const edges = response.warehouse_products.data.edges;
-    const products = edges.map(({ node }) => node);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    
+    if (result.errors) {
+      throw new Error(result.errors[0].message);
+    }
+
+    const warehouseProductsData = result.data.warehouse_products;
+
+    const edges = warehouseProductsData.data.edges;
+    const products = edges.map(({ node }: any) => node);
     
     allProducts.push(...products);
 
-    hasNextPage = response.warehouse_products.data.pageInfo.hasNextPage;
-    afterCursor = response.warehouse_products.data.pageInfo.endCursor;
+    hasNextPage = warehouseProductsData.data.pageInfo.hasNextPage;
+    afterCursor = warehouseProductsData.data.pageInfo.endCursor;
 
     console.log(`Page ${pageCount}: Fetched ${edges.length} products (Total so far: ${allProducts.length}, hasNextPage: ${hasNextPage})`);
-    console.log(`Complexity: ${response.warehouse_products.complexity}`);
+    console.log(`Complexity: ${warehouseProductsData.complexity}`);
 
     // Small delay between pages to be respectful to the API
     if (hasNextPage) {
@@ -154,14 +172,23 @@ async function fetchAllWarehouseProducts(
  */
 export async function GET(request: NextRequest) {
   try {
+    // Get access token from Authorization header (client-side auth)
+    const authHeader = request.headers.get('authorization')
+    const accessToken = authHeader?.replace('Bearer ', '')
+
+    if (!accessToken) {
+      return NextResponse.json({
+        success: false,
+        error: "Authorization header with access token required",
+        hint: "Include 'Authorization: Bearer {token}' header"
+      }, { status: 401 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const warehouseId = searchParams.get("warehouse_id");
     const sku = searchParams.get("sku");
 
-    // Get customer account ID from environment (configured via authentication)
-    const customerAccountId = process.env.SHIPHERO_CUSTOMER_ACCOUNT_ID;
-
-    const client = getShipHeroClient();
+    console.log('Using client-provided access token for locations query');
 
     const variables = {
       warehouse_id: warehouseId || undefined,
@@ -169,9 +196,9 @@ export async function GET(request: NextRequest) {
       active: true, // Only get active products
     };
 
-    // Fetch all pages using warehouse_products query (more efficient per docs)
+    // Fetch all pages using warehouse_products query (more efficient per docs)  
     const startTime = Date.now();
-    const allWarehouseProducts = await fetchAllWarehouseProducts(client, variables, customerAccountId);
+    const allWarehouseProducts = await fetchAllWarehouseProducts(accessToken, variables);
     const fetchDuration = Date.now() - startTime;
 
     // Transform warehouse products into location-based data

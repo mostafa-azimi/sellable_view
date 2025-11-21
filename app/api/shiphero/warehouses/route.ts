@@ -8,25 +8,21 @@ import type { QueryResult, Warehouse } from "@/lib/shiphero/types";
  */
 export async function GET(request: NextRequest) {
   try {
-    // Check environment variable first
-    const refreshToken = process.env.SHIPHERO_REFRESH_TOKEN;
-    if (!refreshToken) {
-      console.error('SHIPHERO_REFRESH_TOKEN not set in environment');
+    // Get access token from Authorization header (client-side auth)
+    const authHeader = request.headers.get('authorization')
+    const accessToken = authHeader?.replace('Bearer ', '')
+
+    if (!accessToken) {
       return NextResponse.json({
         success: false,
-        error: "SHIPHERO_REFRESH_TOKEN environment variable not set",
-        hint: "Add the refresh token to your Vercel environment variables"
-      }, { status: 500 });
+        error: "Authorization header with access token required",
+        hint: "Include 'Authorization: Bearer {token}' header"
+      }, { status: 401 });
     }
 
-    const customerAccountId = getCustomerAccountId();
-    const client = getShipHeroClient();
+    console.log('Using client-provided access token for warehouses query');
 
-    console.log('Fetching warehouses...');
-    console.log('Refresh token configured:', refreshToken.substring(0, 10) + '...');
-    console.log('Customer account ID:', customerAccountId || 'Not set');
-
-    // Simplified warehouses query - exact match to ShipHero docs
+    // Direct API call using client-provided token
     const query = `
       query GetWarehouses {
         account {
@@ -51,21 +47,40 @@ export async function GET(request: NextRequest) {
       }
     `;
 
-    const response = await client.query<{
-      account: QueryResult<{
-        warehouses: Warehouse[];
-      }>;
-    }>(query, {}, customerAccountId);
+    console.log('Fetching warehouses with client token...');
 
-    console.log('Warehouses fetched successfully:', response.account.data.warehouses.length);
+    const response = await fetch('https://public-api.shiphero.com/graphql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      },
+      body: JSON.stringify({ query })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    
+    if (result.errors) {
+      throw new Error(result.errors[0].message);
+    }
+
+    if (!result.data?.account?.data) {
+      throw new Error('No account data returned');
+    }
+
+    console.log('Warehouses fetched successfully:', result.data.account.data.warehouses.length);
 
     return NextResponse.json({
       success: true,
-      data: response.account.data.warehouses,
+      data: result.data.account.data.warehouses,
       meta: {
-        request_id: response.account.request_id,
-        complexity: response.account.complexity,
-        customer_account_id: customerAccountId || 'All customers'
+        request_id: result.data.account.request_id,
+        complexity: result.data.account.complexity,
+        auth_method: 'client_token'
       },
     });
   } catch (error: any) {
