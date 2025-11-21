@@ -16,9 +16,9 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const customerAccountId = searchParams.get("customer_account_id")
 
-    console.log('Warehouses API called')
-    console.log('Auth header present:', !!authHeader)
-    console.log('Access token extracted:', !!accessToken)
+    console.log('=== WAREHOUSES API CALLED ===')
+    console.log('Auth header:', authHeader ? 'Present' : 'MISSING')
+    console.log('Access token:', accessToken ? accessToken.substring(0, 30) + '...' : 'MISSING')
     console.log('Customer account ID filter:', customerAccountId || 'All customers')
 
     if (!accessToken) {

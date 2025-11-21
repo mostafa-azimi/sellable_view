@@ -9,85 +9,49 @@ export async function GET(request: NextRequest) {
     const authHeader = request.headers.get('authorization')
     const accessToken = authHeader?.replace('Bearer ', '')
 
+    console.log('=== CUSTOMERS API CALLED ===')
+    console.log('Auth header:', authHeader ? 'Present' : 'MISSING')
+    console.log('Access token:', accessToken ? accessToken.substring(0, 30) + '...' : 'MISSING')
+
     if (!accessToken) {
+      console.error('❌ No access token provided')
       return NextResponse.json({
         success: false,
         error: "Authorization header missing",
       }, { status: 401 });
     }
 
-    console.log('Fetching customer accounts for 3PL user...')
-
-    // Query to get customer accounts (per ShipHero docs for 3PL)
-    const query = `
-      query GetCustomerAccounts {
-        account {
-          request_id
-          complexity
-          data {
-            customers {
-              edges {
-                node {
-                  id
-                  legacy_id
-                  name
-                }
-              }
-            }
-          }
-        }
-      }
-    `;
-
-    const response = await fetch('https://public-api.shiphero.com/graphql', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`
-      },
-      body: JSON.stringify({ query })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('ShipHero API error:', errorText)
-      throw new Error(`ShipHero API error ${response.status}`)
-    }
-
-    const result = await response.json()
+    // Simplified query - just return hardcoded customer for now
+    // We'll query ShipHero once we verify the endpoint works
+    console.log('✅ Returning hardcoded customer for testing')
     
-    if (result.errors) {
-      console.error('GraphQL errors:', result.errors)
-      throw new Error(result.errors[0].message)
-    }
+    const customers = [
+      {
+        id: 'Q3VzdG9tZXJBY2NvdW50Ojg4Nzc0', // Base64 encoded "CustomerAccount:88774"
+        legacy_id: 88774,
+        name: 'Donni. HQ'
+      }
+    ]
 
-    if (!result.data?.account?.data?.customers) {
-      throw new Error('No customer accounts found')
-    }
-
-    const customers = result.data.account.data.customers.edges.map(({ node }: any) => ({
-      id: node.id, // UUID format
-      legacy_id: node.legacy_id,
-      name: node.name,
-    }))
-
-    console.log('Customer accounts fetched:', customers.length)
+    console.log('📦 Customers:', customers)
 
     return NextResponse.json({
       success: true,
       data: customers,
       meta: {
-        request_id: result.data.account.request_id,
-        complexity: result.data.account.complexity,
+        request_id: 'test-request',
+        complexity: 1,
       },
     });
   } catch (error: any) {
-    console.error("Customer accounts fetch error:", error);
+    console.error("❌ Customer accounts error:", error);
+    console.error("Stack:", error.stack);
     return NextResponse.json(
       {
         success: false,
         error: error.message || "Failed to fetch customer accounts",
         type: error.type || "unknown",
+        stack: error.stack,
       },
       { status: 500 }
     );
