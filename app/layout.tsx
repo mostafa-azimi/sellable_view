@@ -4,7 +4,7 @@ import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { SidebarLayout } from '@/components/sidebar-layout'
 import { ThemeProvider } from '@/components/theme-provider'
-import { Toaster } from '@/components/ui/toast'
+import { Toaster } from '@/components/ui/toaster'
 
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });

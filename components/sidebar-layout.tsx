@@ -31,15 +31,15 @@ const navigation = [
   },
   {
     name: 'Authentication',
-    href: '/settings',
+    href: '/login',
     icon: LogIn,
-    description: 'ShipHero API credentials'
+    description: 'ShipHero API setup'
   },
   {
     name: 'Settings',
     href: '/settings',
     icon: Settings,
-    description: 'App configuration'
+    description: 'API token management'
   }
 ]
 
