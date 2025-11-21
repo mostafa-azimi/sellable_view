@@ -7,53 +7,9 @@ import { Badge } from '@/components/ui/badge'
 import { Package, Download, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
-interface LocationProduct {
-  sku: string
-  productName: string
-  quantity: number
-  barcode?: string
-}
-
-interface LocationData {
-  locationId: string
-  legacyId: number
-  locationName: string
-  locationNameRaw: string
-  zone: string
-  pickable: boolean
-  sellable: boolean
-  warehouseId: string
-  products: LocationProduct[]
-  totalItems: number
-}
-
-interface WarehouseData {
-  id: string
-  legacyId: number
-  identifier: string
-  name: string
-  address: {
-    name: string
-    city: string
-    state: string
-    country: string
-  }
-}
-
-interface CombinedInventoryData {
-  warehouses: WarehouseData[]
-  locations: LocationData[]
-  locationsByWarehouse: Map<string, LocationData[]>
-}
-
-type SortField = 'warehouse' | 'location' | 'sku' | 'productName' | 'quantity' | 'zone'
-type SortDirection = 'asc' | 'desc'
-
 interface FlatInventoryItem {
   warehouse: string
-  warehouseId: string
   location: string
-  locationId: string
   zone: string
   pickable: boolean
   sellable: boolean
@@ -65,22 +21,12 @@ interface FlatInventoryItem {
 
 export default function InventoryPage() {
   const [isLoading, setIsLoading] = useState(false)
-  const [loadingProgress, setLoadingProgress] = useState('')
   const [flatInventory, setFlatInventory] = useState<FlatInventoryItem[]>([])
-  const [sortField, setSortField] = useState<SortField>('warehouse')
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
-  const [loadDuration, setLoadDuration] = useState<number>(0)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [inventoryData, setInventoryData] = useState<CombinedInventoryData | null>(null)
-  const [hasSearched, setHasSearched] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
-    // Check if user is authenticated
-    const authenticated = AuthManager.isAuthenticated()
-    setIsAuthenticated(authenticated)
-    
-    // Don't auto-load - wait for user to click load button
+    setIsAuthenticated(AuthManager.isAuthenticated())
   }, [])
 
   const loadInventory = async () => {
