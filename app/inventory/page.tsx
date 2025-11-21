@@ -109,23 +109,15 @@ export default function InventoryPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <Link href="/">
-          <Button variant="ghost" className="mb-6">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Home
-          </Button>
-        </Link>
-
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-3 text-balance">
-            Bin Location Inventory
-          </h1>
-          <p className="text-muted-foreground text-lg text-balance">
-            View all bin locations with their inventory, including SKUs, quantities, and status
-          </p>
-        </div>
+    <div className="p-6">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          Bin Location Inventory
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400">
+          View all bin locations with their inventory, including SKUs, quantities, and status
+        </p>
+      </div>
 
         {/* Search Controls */}
         <Card className="mb-6">
@@ -331,7 +323,6 @@ export default function InventoryPage() {
             </CardContent>
           </Card>
         )}
-      </div>
-    </main>
+    </div>
   )
 }

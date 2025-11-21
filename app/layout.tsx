@@ -2,13 +2,16 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
+import { SidebarLayout } from '@/components/sidebar-layout'
+import { ThemeProvider } from '@/components/theme-provider'
+import { Toaster } from '@/components/ui/toast'
 
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
+  title: 'Sellable View',
+  description: '3PL Inventory management and bin location system powered by ShipHero',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -35,9 +38,19 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`font-sans antialiased`}>
-        {children}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <SidebarLayout>
+            {children}
+          </SidebarLayout>
+          <Toaster />
+        </ThemeProvider>
         <Analytics />
       </body>
     </html>

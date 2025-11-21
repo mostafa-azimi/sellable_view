@@ -123,23 +123,15 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <Link href="/">
-          <Button variant="ghost" className="mb-6">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Home
-          </Button>
-        </Link>
-
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-3 text-balance">
-            Authentication Settings
-          </h1>
-          <p className="text-muted-foreground text-lg text-balance">
-            Configure your ShipHero API credentials for accessing inventory data
-          </p>
-        </div>
+    <div className="p-6">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          Authentication Settings
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400">
+          Configure your ShipHero API credentials for accessing inventory data
+        </p>
+      </div>
 
         <div className="space-y-6">
           <Card>
@@ -322,7 +314,6 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </div>
-      </div>
-    </main>
+    </div>
   )
 }

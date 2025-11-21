@@ -1,104 +1,139 @@
-import Link from 'next/link'
-import { Package, Key, Search } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Package, BarChart3, Activity } from 'lucide-react'
+import Link from 'next/link'
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-16 max-w-6xl">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-3 text-balance">
-            Customer Inventory Portal
-          </h1>
-          <p className="text-muted-foreground text-lg text-balance">
-            View real-time inventory levels, product locations, and stock availability
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-6 mb-16">
-          <Card className="border-2 hover:border-primary/50 transition-colors">
-            <CardHeader className="space-y-4">
-              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Search className="w-6 h-6" />
-              </div>
-              <div>
-                <CardTitle className="text-2xl mb-2">View Inventory</CardTitle>
-                <CardDescription className="text-base">
-                  Search by SKU or product name to view locations, quantities, and availability status
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Link href="/inventory">
-                <Button className="w-full" size="lg">
-                  Search Inventory
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-
-          <Card className="border-2 hover:border-primary/50 transition-colors">
-            <CardHeader className="space-y-4">
-              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Package className="w-6 h-6" />
-              </div>
-              <div>
-                <CardTitle className="text-2xl mb-2">Product Details</CardTitle>
-                <CardDescription className="text-base">
-                  View comprehensive product information including bin locations and stock status
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Link href="/inventory">
-                <Button className="w-full" size="lg">
-                  View Products
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="border-t pt-12">
-          <div className="flex items-center gap-2 text-muted-foreground mb-6">
-            <Key className="w-5 h-5" />
-            <h2 className="text-lg font-semibold text-foreground">Settings & Configuration</h2>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            <Link href="/settings">
-              <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
-                <CardHeader>
-                  <div className="flex items-start gap-4">
-                    <Key className="w-5 h-5 text-muted-foreground mt-1" />
-                    <div>
-                      <CardTitle className="text-lg mb-1">Authentication</CardTitle>
-                      <CardDescription>
-                        Manage ShipHero API tokens and authentication
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-              </Card>
-            </Link>
-
-            <Card className="opacity-50">
-              <CardHeader>
-                <div className="flex items-start gap-4">
-                  <Package className="w-5 h-5 text-muted-foreground mt-1" />
-                  <div>
-                    <CardTitle className="text-lg mb-1">API Status</CardTitle>
-                    <CardDescription>
-                      View connection status and API health
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-            </Card>
-          </div>
-        </div>
+    <div className="p-6">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          Dashboard
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400">
+          Welcome to your 3PL inventory management system
+        </p>
       </div>
-    </main>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        {/* Quick Stats */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <Package className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">-</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Total Locations</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                <Activity className="w-6 h-6 text-green-600 dark:text-green-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">-</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Active SKUs</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                <BarChart3 className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">-</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Total Units</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <Package className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <CardTitle>Inventory Management</CardTitle>
+                <CardDescription>
+                  Query bin locations and manage stock levels
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Search and view all bin locations with their inventory, including SKUs, quantities, and pickable/sellable status.
+            </p>
+            <Link href="/inventory">
+              <Button className="w-full">
+                Open Inventory
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                <Activity className="w-5 h-5 text-green-600 dark:text-green-400" />
+              </div>
+              <div>
+                <CardTitle>ShipHero Integration</CardTitle>
+                <CardDescription>
+                  Real-time data via GraphQL API
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Connected to ShipHero's GraphQL API with automatic token refresh and pagination for large datasets.
+            </p>
+            <div className="flex items-center gap-2 text-sm">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span className="text-green-600 dark:text-green-400">Connected</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Getting Started */}
+      <Card className="mt-6 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+        <CardHeader>
+          <CardTitle className="text-blue-900 dark:text-blue-100">
+            🚀 Getting Started
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2 text-sm">
+            <p className="text-blue-800 dark:text-blue-200">
+              1. Go to <strong>Authentication</strong> to set up your ShipHero API token
+            </p>
+            <p className="text-blue-800 dark:text-blue-200">
+              2. Navigate to <strong>Inventory</strong> to query bin locations by customer account ID
+            </p>
+            <p className="text-blue-800 dark:text-blue-200">
+              3. View real-time inventory data with automatic pagination
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   )
 }
