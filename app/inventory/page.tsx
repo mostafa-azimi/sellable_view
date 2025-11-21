@@ -28,10 +28,12 @@ export default function InventoryPage() {
   const [sortField, setSortField] = useState<SortField>('warehouse')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null)
   const { toast } = useToast()
 
   useEffect(() => {
     setIsAuthenticated(AuthManager.isAuthenticated())
+    setSelectedCustomer(CustomerManager.getSelectedCustomer())
   }, [])
 
   const loadInventory = async () => {
@@ -48,11 +50,19 @@ export default function InventoryPage() {
     setIsLoading(true)
     
     try {
+      const customerAccountId = CustomerManager.getCustomerAccountId()
+      
       console.log('🚀 Loading inventory via SERVER endpoint with client token...')
       console.log('Token:', accessToken.substring(0, 20) + '...')
+      console.log('Customer filter:', customerAccountId || 'All customers')
+      
+      // Build URL with customer_account_id if selected
+      const url = customerAccountId 
+        ? `/api/shiphero/warehouses?customer_account_id=${encodeURIComponent(customerAccountId)}`
+        : '/api/shiphero/warehouses'
       
       // Call OUR server endpoint with Authorization header containing client's token
-      const response = await fetch('/api/shiphero/warehouses', {
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -195,7 +205,14 @@ export default function InventoryPage() {
             Inventory
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            {flatInventory.length > 0 && `${flatInventory.length} items across all warehouses`}
+            {selectedCustomer && (
+              <span className="inline-flex items-center gap-2">
+                <Badge variant="outline" className="font-normal">
+                  {selectedCustomer.name}
+                </Badge>
+              </span>
+            )}
+            {flatInventory.length > 0 && ` ${flatInventory.length} items`}
           </p>
         </div>
         <div className="flex gap-2">

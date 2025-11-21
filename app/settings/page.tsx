@@ -2,12 +2,19 @@
 
 import { useState, useEffect } from 'react'
 import { AuthManager } from '@/lib/auth-manager'
+import { CustomerManager } from '@/lib/customer-manager'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Copy, Check, Key, Zap, X } from 'lucide-react'
+import { Copy, Check, Key, Zap, X, Users } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+
+interface CustomerAccount {
+  id: string
+  legacy_id: number
+  name: string
+}
 
 // Dev test token for development
 const DEV_TEST_TOKEN = 'dYbj7j9dspqoxwAtW5S2TOBNacIYvv7BKFwQqbArw7mv-'
@@ -23,6 +30,11 @@ export default function SettingsPage() {
   const [showTestToken, setShowTestToken] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [timeRemaining, setTimeRemaining] = useState<string | null>(null)
+  
+  // Customer account selection for 3PL
+  const [customers, setCustomers] = useState<CustomerAccount[]>([])
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerAccount | null>(null)
+  const [isLoadingCustomers, setIsLoadingCustomers] = useState(false)
 
   const { toast } = useToast()
 
@@ -43,8 +55,61 @@ export default function SettingsPage() {
         setAuthToken(savedToken)
         setTimeRemaining(AuthManager.getTimeRemaining())
       }
+      
+      // Load customer accounts if authenticated
+      loadCustomerAccounts()
+    }
+
+    // Load selected customer
+    const savedCustomer = CustomerManager.getSelectedCustomer()
+    if (savedCustomer) {
+      setSelectedCustomer(savedCustomer)
     }
   }, [])
+
+  const loadCustomerAccounts = async () => {
+    const accessToken = AuthManager.getValidToken()
+    if (!accessToken) return
+
+    setIsLoadingCustomers(true)
+    try {
+      const response = await fetch('/api/shiphero/customers', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success) {
+          setCustomers(result.data)
+          console.log('Customer accounts loaded:', result.data)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load customer accounts:', error)
+    } finally {
+      setIsLoadingCustomers(false)
+    }
+  }
+
+  const handleSelectCustomer = (customer: CustomerAccount) => {
+    setSelectedCustomer(customer)
+    CustomerManager.saveCustomer(customer)
+    toast({
+      title: 'Customer account selected',
+      description: `All inventory queries will now filter by: ${customer.name}`,
+    })
+  }
+
+  const handleClearCustomer = () => {
+    setSelectedCustomer(null)
+    CustomerManager.clearCustomer()
+    toast({
+      title: 'Customer filter cleared',
+      description: 'Will show all customer data',
+    })
+  }
 
   const handleSaveRefreshToken = () => {
     localStorage.setItem('shiphero_refresh_token', refreshToken)
@@ -98,6 +163,9 @@ export default function SettingsPage() {
       
       // Save refresh token for convenience  
       localStorage.setItem('shiphero_refresh_token', refreshToken)
+      
+      // Load customer accounts after authentication
+      loadCustomerAccounts()
       
       toast({
         title: 'Authentication successful',
@@ -293,13 +361,73 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Customer Account Selection (3PL) */}
+      {isAuthenticated && (
+        <Card className="mt-6 max-w-2xl">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                <Users className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <CardTitle className="text-xl">Customer Account Filter</CardTitle>
+                <CardDescription>
+                  Select a customer account to filter all inventory queries (3PL mode)
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {isLoadingCustomers ? (
+              <p className="text-sm text-gray-500">Loading customer accounts...</p>
+            ) : customers.length > 0 ? (
+              <div className="space-y-3">
+                <Label>Select Customer Account</Label>
+                <div className="grid gap-2">
+                  {customers.map((customer) => (
+                    <Button
+                      key={customer.id}
+                      variant={selectedCustomer?.id === customer.id ? 'default' : 'outline'}
+                      className="w-full justify-start"
+                      onClick={() => handleSelectCustomer(customer)}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span>{customer.name}</span>
+                        <span className="text-xs opacity-70">ID: {customer.legacy_id}</span>
+                      </div>
+                    </Button>
+                  ))}
+                </div>
+                {selectedCustomer && (
+                  <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
+                    <div>
+                      <p className="font-medium text-purple-900 dark:text-purple-100">
+                        Active Filter: {selectedCustomer.name}
+                      </p>
+                      <p className="text-xs text-purple-700 dark:text-purple-300">
+                        Account ID: {selectedCustomer.legacy_id}
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={handleClearCustomer}>
+                      Clear Filter
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">No customer accounts found</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Information */}
       <Card className="mt-6 max-w-2xl border-gray-200 dark:border-gray-700">
         <CardContent className="p-4">
           <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
             <p><strong>Refresh Token:</strong> Long-lived token from ShipHero developer settings (28-day access tokens)</p>
+            <p><strong>Customer Filter:</strong> Select a customer account to view only their inventory data</p>
             <p><strong>API Endpoint:</strong> https://public-api.shiphero.com/graphql</p>
-            <p><strong>Authentication:</strong> Bearer token authentication with automatic refresh</p>
           </div>
         </CardContent>
       </Card>

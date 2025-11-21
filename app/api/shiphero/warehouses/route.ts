@@ -12,9 +12,14 @@ export async function GET(request: NextRequest) {
     const authHeader = request.headers.get('authorization')
     const accessToken = authHeader?.replace('Bearer ', '')
 
+    // Get customer account ID from query params (for 3PL filtering)
+    const searchParams = request.nextUrl.searchParams
+    const customerAccountId = searchParams.get("customer_account_id")
+
     console.log('Warehouses API called')
     console.log('Auth header present:', !!authHeader)
     console.log('Access token extracted:', !!accessToken)
+    console.log('Customer account ID filter:', customerAccountId || 'All customers')
 
     if (!accessToken) {
       console.error('No access token in Authorization header')
@@ -27,14 +32,14 @@ export async function GET(request: NextRequest) {
 
     console.log('Using client token:', accessToken.substring(0, 20) + '...');
 
-    // Direct API call using client-provided token
+    // Direct API call using client-provided token with optional customer filter
     const query = `
-      query GetWarehouses {
+      query GetWarehouses($customer_account_id: String) {
         account {
           request_id
           complexity
           data {
-            warehouses {
+            warehouses(customer_account_id: $customer_account_id) {
               id
               legacy_id
               identifier
@@ -52,6 +57,8 @@ export async function GET(request: NextRequest) {
       }
     `;
 
+    const variables = customerAccountId ? { customer_account_id: customerAccountId } : {};
+
     console.log('Fetching warehouses with client token:', accessToken.substring(0, 20) + '...');
 
     const response = await fetch('https://public-api.shiphero.com/graphql', {
@@ -60,7 +67,7 @@ export async function GET(request: NextRequest) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${accessToken}`
       },
-      body: JSON.stringify({ query })
+      body: JSON.stringify({ query, variables })
     });
 
     console.log('ShipHero API response status:', response.status);
