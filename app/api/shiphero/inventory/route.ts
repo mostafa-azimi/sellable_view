@@ -19,14 +19,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: "customer_account_id required" }, { status: 400 });
     }
 
-    // CORRECT query: warehouse_products with customer_account_id
+    // Correct query per ShipHero docs: warehouse_products without pagination, with customer_account_id
     const query = `
-      query ($customer_account_id: String, $first: Int, $after: String) {
+      query GetWarehouseProducts($customer_account_id: String) {
         warehouse_products(
           customer_account_id: $customer_account_id
           active: true
-          first: $first
-          after: $after
         ) {
           request_id
           complexity
@@ -34,107 +32,83 @@ export async function GET(request: NextRequest) {
             edges {
               node {
                 sku
+                warehouse_id
                 warehouse_identifier
                 on_hand
                 inventory_bin
+                active
                 product {
                   name
                   barcode
                 }
                 locations {
-                  location_id
-                  location_name
+                  location {
+                    id
+                    name
+                  }
                   quantity
                   pickable
                 }
               }
-            }
-            pageInfo {
-              hasNextPage
-              endCursor
             }
           }
         }
       }
     `;
 
-    console.log('📤 Querying ShipHero...')
+    const variables = { customer_account_id: customerAccountId }
 
-    const allProducts: any[] = []
-    let hasNextPage = true
-    let afterCursor: string | undefined = undefined
-    let pageCount = 0
+    console.log('📤 Query:', variables)
 
-    while (hasNextPage && pageCount < 10) {
-      pageCount++
-      
-      const variables = {
-        customer_account_id: customerAccountId,
-        first: 100,
-        after: afterCursor
-      }
+    const response = await fetch('https://public-api.shiphero.com/graphql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      },
+      body: JSON.stringify({ query, variables })
+    });
 
-      const response = await fetch('https://public-api.shiphero.com/graphql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
-        },
-        body: JSON.stringify({ query, variables })
-      });
+    console.log('📥 Status:', response.status)
 
-      console.log(`Page ${pageCount}:`, response.status)
-
-      if (!response.ok) {
-        const text = await response.text()
-        console.error('HTTP error:', text.substring(0, 200))
-        return NextResponse.json({ 
-          success: false, 
-          error: `HTTP ${response.status}`,
-          details: text.substring(0, 300)
-        }, { status: 500 });
-      }
-
-      const result = await response.json()
-
-      if (result.errors) {
-        console.error('GraphQL errors:', JSON.stringify(result.errors))
-        return NextResponse.json({ 
-          success: false, 
-          error: result.errors[0].message,
-          errors: result.errors
-        }, { status: 500 });
-      }
-
-      const edges = result.data?.warehouse_products?.data?.edges || []
-      console.log(`Page ${pageCount}: ${edges.length} items`)
-      
-      allProducts.push(...edges.map(({ node }: any) => node))
-
-      hasNextPage = result.data?.warehouse_products?.data?.pageInfo?.hasNextPage || false
-      afterCursor = result.data?.warehouse_products?.data?.pageInfo?.endCursor
-
-      if (hasNextPage) {
-        await new Promise(resolve => setTimeout(resolve, 200))
-      }
+    if (!response.ok) {
+      const text = await response.text()
+      console.error('HTTP error:', text.substring(0, 300))
+      return NextResponse.json({ 
+        success: false, 
+        error: `HTTP ${response.status}`,
+        details: text.substring(0, 300)
+      }, { status: 500 });
     }
 
-    console.log(`Total: ${allProducts.length} products`)
+    const result = await response.json()
 
-    // Transform to inventory items
+    if (result.errors) {
+      console.error('GraphQL errors:', JSON.stringify(result.errors))
+      return NextResponse.json({ 
+        success: false, 
+        error: result.errors[0].message,
+        errors: result.errors
+      }, { status: 500 });
+    }
+
+    const products = result.data?.warehouse_products?.data?.edges?.map(({ node }: any) => node) || []
+    console.log(`✅ Products: ${products.length}`)
+
+    // Transform to flat items
     const items: any[] = []
 
-    allProducts.forEach(product => {
+    products.forEach((product: any) => {
       if (product.locations && product.locations.length > 0) {
-        // Dynamic slotting
+        // Dynamic slotting with locations
         product.locations.forEach((loc: any) => {
           if (loc.quantity > 0) {
             items.push({
               sku: product.sku,
               productName: product.product?.name || product.sku,
               quantity: loc.quantity,
-              location: loc.location_name,
-              locationId: loc.location_id,
+              location: loc.location?.name || 'Unknown',
+              locationId: loc.location?.id || 'unknown',
               pickable: loc.pickable,
               sellable: true,
               warehouse: product.warehouse_identifier,
@@ -143,7 +117,7 @@ export async function GET(request: NextRequest) {
           }
         })
       } else if (product.on_hand > 0) {
-        // Static or no locations
+        // No specific locations
         items.push({
           sku: product.sku,
           productName: product.product?.name || product.sku,
@@ -158,18 +132,15 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    console.log(`✅ Items: ${items.length}`)
+    console.log(`🎉 Items: ${items.length}`)
 
     return NextResponse.json({
       success: true,
       data: items,
-      meta: {
-        total: items.length,
-        pages: pageCount
-      },
+      meta: { total: items.length },
     });
   } catch (error: any) {
-    console.error("💥 Error:", error);
+    console.error("💥 Error:", error.message);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
