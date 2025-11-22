@@ -135,48 +135,41 @@ export async function GET(request: NextRequest) {
 
     console.log(`🎉 Total products fetched: ${allProducts.length}`)
 
-    // Transform to flat inventory items
+    // Transform warehouse_products to flat inventory items
     const inventoryItems: any[] = []
 
     allProducts.forEach(product => {
-      // Each product has inventory array with warehouse-specific data
-      if (!product.inventory || product.inventory.length === 0) {
-        return // Skip products with no inventory
+      if (product.locations && product.locations.length > 0) {
+        // Dynamic slotting - has locations array with bin details
+        product.locations.forEach((location: any) => {
+          if (location.quantity > 0) {
+            inventoryItems.push({
+              sku: product.sku,
+              productName: product.product?.name || product.sku,
+              quantity: location.quantity,
+              location: location.location_name,
+              locationId: location.location_id,
+              pickable: location.pickable,
+              sellable: true,
+              warehouse: product.warehouse_identifier,
+              barcode: product.product?.barcode,
+            })
+          }
+        })
+      } else if (product.inventory_bin && product.on_hand > 0) {
+        // Static slotting or no location detail - use inventory_bin
+        inventoryItems.push({
+          sku: product.sku,
+          productName: product.product?.name || product.sku,
+          quantity: product.on_hand,
+          location: product.inventory_bin || 'Unassigned',
+          locationId: product.inventory_bin || 'unassigned',
+          pickable: product.active !== false,
+          sellable: product.active !== false,
+          warehouse: product.warehouse_identifier,
+          barcode: product.product?.barcode,
+        })
       }
-
-      product.inventory.forEach((inv: any) => {
-        if (inv.locations && inv.locations.length > 0) {
-          // Dynamic slotting - use locations array
-          inv.locations.forEach((location: any) => {
-            if (location.quantity > 0) {
-              inventoryItems.push({
-                sku: product.sku,
-                productName: product.name || product.sku,
-                quantity: location.quantity,
-                location: location.location_name,
-                locationId: location.location_id,
-                pickable: location.pickable,
-                sellable: true,
-                warehouse: inv.warehouse_identifier,
-                barcode: product.barcode,
-              })
-            }
-          })
-        } else if (inv.on_hand > 0) {
-          // Warehouse total (no specific locations)
-          inventoryItems.push({
-            sku: product.sku,
-            productName: product.name || product.sku,
-            quantity: inv.on_hand,
-            location: 'General Stock',
-            locationId: inv.warehouse_id,
-            pickable: true,
-            sellable: true,
-            warehouse: inv.warehouse_identifier,
-            barcode: product.barcode,
-          })
-        }
-      })
     })
 
     console.log(`📦 Inventory items created: ${inventoryItems.length}`)
