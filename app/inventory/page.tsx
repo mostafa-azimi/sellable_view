@@ -19,6 +19,7 @@ interface FlatInventoryItem {
   productName: string
   quantity: number
   barcode?: string
+  type: string
 }
 
 type SortField = 'warehouse' | 'location' | 'sku' | 'productName' | 'quantity' | 'zone'
@@ -97,18 +98,8 @@ export default function InventoryPage() {
         throw new Error(result.error || 'Failed to load inventory')
       }
 
-      // Transform to flat table format
-      const flatData: FlatInventoryItem[] = result.data.map((item: any) => ({
-        warehouse: item.warehouse,
-        location: item.location,
-        zone: item.location.split('-')[0] || 'Unknown',
-        pickable: item.pickable,
-        sellable: item.sellable,
-        sku: item.sku,
-        productName: item.productName,
-        quantity: item.quantity,
-        barcode: item.barcode,
-      }))
+      // Data is already in the correct format from API
+      const flatData: FlatInventoryItem[] = result.data
 
       setFlatInventory(flatData)
       
@@ -277,85 +268,56 @@ export default function InventoryPage() {
                 <thead className="bg-gray-50 dark:bg-gray-800 border-b">
                   <tr>
                     <th className="px-4 py-3 text-left">
-                      <Button
-                        variant="ghost"
-                        className="h-auto p-0 font-semibold hover:bg-transparent"
-                        onClick={() => sortData('warehouse')}
-                      >
+                      <Button variant="ghost" className="h-auto p-0 font-semibold hover:bg-transparent" onClick={() => sortData('productName')}>
+                        Item {getSortIcon('productName')}
+                      </Button>
+                    </th>
+                    <th className="px-4 py-3 text-left">
+                      <Button variant="ghost" className="h-auto p-0 font-semibold hover:bg-transparent" onClick={() => sortData('warehouse')}>
                         Warehouse {getSortIcon('warehouse')}
                       </Button>
                     </th>
+                    <th className="px-4 py-3 text-left">Client</th>
                     <th className="px-4 py-3 text-left">
-                      <Button
-                        variant="ghost"
-                        className="h-auto p-0 font-semibold hover:bg-transparent"
-                        onClick={() => sortData('location')}
-                      >
+                      <Button variant="ghost" className="h-auto p-0 font-semibold hover:bg-transparent" onClick={() => sortData('location')}>
                         Location {getSortIcon('location')}
                       </Button>
                     </th>
+                    <th className="px-4 py-3 text-left">Type</th>
                     <th className="px-4 py-3 text-left">
-                      <Button
-                        variant="ghost"
-                        className="h-auto p-0 font-semibold hover:bg-transparent"
-                        onClick={() => sortData('zone')}
-                      >
-                        Zone {getSortIcon('zone')}
+                      <Button variant="ghost" className="h-auto p-0 font-semibold hover:bg-transparent" onClick={() => sortData('quantity')}>
+                        Units {getSortIcon('quantity')}
                       </Button>
                     </th>
-                    <th className="px-4 py-3 text-left">
-                      <Button
-                        variant="ghost"
-                        className="h-auto p-0 font-semibold hover:bg-transparent"
-                        onClick={() => sortData('sku')}
-                      >
-                        SKU {getSortIcon('sku')}
-                      </Button>
-                    </th>
-                    <th className="px-4 py-3 text-left">
-                      <Button
-                        variant="ghost"
-                        className="h-auto p-0 font-semibold hover:bg-transparent"
-                        onClick={() => sortData('productName')}
-                      >
-                        Product {getSortIcon('productName')}
-                      </Button>
-                    </th>
-                    <th className="px-4 py-3 text-left">
-                      <Button
-                        variant="ghost"
-                        className="h-auto p-0 font-semibold hover:bg-transparent"
-                        onClick={() => sortData('quantity')}
-                      >
-                        Quantity {getSortIcon('quantity')}
-                      </Button>
-                    </th>
-                    <th className="px-4 py-3 text-left">Status</th>
+                    <th className="px-4 py-3 text-center">Pickable</th>
+                    <th className="px-4 py-3 text-center">Sellable</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {flatInventory.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                      <td className="px-4 py-3 font-medium">{item.warehouse}</td>
-                      <td className="px-4 py-3 font-mono text-sm">{item.location}</td>
-                      <td className="px-4 py-3 text-sm">{item.zone}</td>
-                      <td className="px-4 py-3 font-mono font-semibold">{item.sku}</td>
+                    <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 border-b">
                       <td className="px-4 py-3">
-                        <div className="text-sm">{item.productName}</div>
-                        {item.barcode && (
-                          <div className="text-xs text-gray-500 font-mono mt-1">{item.barcode}</div>
+                        <div className="font-medium">{item.productName}</div>
+                        <div className="text-xs text-gray-500 font-mono">SKU {item.sku}</div>
+                      </td>
+                      <td className="px-4 py-3">{item.warehouse}</td>
+                      <td className="px-4 py-3">DONNI. HQ</td>
+                      <td className="px-4 py-3 font-mono text-sm">{item.location}</td>
+                      <td className="px-4 py-3 text-sm">{item.type}</td>
+                      <td className="px-4 py-3 font-semibold text-lg">{item.quantity}</td>
+                      <td className="px-4 py-3 text-center">
+                        {item.pickable && (
+                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/30">
+                            <span className="text-green-600 dark:text-green-400">✓</span>
+                          </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 font-semibold text-lg">{item.quantity}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-1">
-                          <Badge variant={item.pickable ? 'default' : 'secondary'} className="text-xs">
-                            {item.pickable ? 'P' : '—'}
-                          </Badge>
-                          <Badge variant={item.sellable ? 'default' : 'secondary'} className="text-xs">
-                            {item.sellable ? 'S' : '—'}
-                          </Badge>
-                        </div>
+                      <td className="px-4 py-3 text-center">
+                        {item.sellable && (
+                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/30">
+                            <span className="text-green-600 dark:text-green-400">✓</span>
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}

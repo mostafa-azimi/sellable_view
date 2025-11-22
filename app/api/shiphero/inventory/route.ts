@@ -8,7 +8,6 @@ export async function GET(request: NextRequest) {
     const customerAccountId = searchParams.get("customer_account_id")
 
     console.log('=== INVENTORY API ===')
-    console.log('Token:', accessToken ? 'OK' : 'MISSING')
     console.log('Customer ID:', customerAccountId)
 
     if (!accessToken) {
@@ -19,35 +18,32 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: "customer_account_id required" }, { status: 400 });
     }
 
-    // Correct query per ShipHero docs: warehouse_products without pagination, with customer_account_id
+    // Query locations with products for dynamic slotting - per ShipHero docs
     const query = `
-      query GetWarehouseProducts($customer_account_id: String) {
-        warehouse_products(
-          customer_account_id: $customer_account_id
-          active: true
-        ) {
+      query GetLocations($customer_account_id: String) {
+        locations(warehouse_id: null) {
           request_id
           complexity
           data {
             edges {
               node {
-                sku
+                id
+                name
+                zone
+                pickable
+                sellable
                 warehouse_id
-                warehouse_identifier
-                on_hand
-                inventory_bin
-                active
-                product {
-                  name
-                  barcode
-                }
-                locations {
-                  location {
-                    id
-                    name
+                products(customer_account_id: $customer_account_id) {
+                  edges {
+                    node {
+                      sku
+                      quantity
+                      product {
+                        name
+                        barcode
+                      }
+                    }
                   }
-                  quantity
-                  pickable
                 }
               }
             }
@@ -58,7 +54,7 @@ export async function GET(request: NextRequest) {
 
     const variables = { customer_account_id: customerAccountId }
 
-    console.log('📤 Query:', variables)
+    console.log('📤 Querying locations with customer filter')
 
     const response = await fetch('https://public-api.shiphero.com/graphql', {
       method: 'POST',
@@ -92,44 +88,64 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    const products = result.data?.warehouse_products?.data?.edges?.map(({ node }: any) => node) || []
-    console.log(`✅ Products: ${products.length}`)
+    const locations = result.data?.locations?.data?.edges?.map(({ node }: any) => node) || []
+    console.log(`✅ Locations: ${locations.length}`)
+
+    // Get warehouse IDs to names mapping
+    const warehouseQuery = `
+      query {
+        account {
+          data {
+            warehouses {
+              id
+              identifier
+            }
+          }
+        }
+      }
+    `;
+
+    const whResponse = await fetch('https://public-api.shiphero.com/graphql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      },
+      body: JSON.stringify({ query: warehouseQuery })
+    });
+
+    const whResult = await whResponse.json()
+    const warehouseMap = new Map()
+    
+    if (whResult.data?.account?.data?.warehouses) {
+      whResult.data.account.data.warehouses.forEach((wh: any) => {
+        warehouseMap.set(wh.id, wh.identifier)
+      })
+    }
 
     // Transform to flat items
     const items: any[] = []
 
-    products.forEach((product: any) => {
-      if (product.locations && product.locations.length > 0) {
-        // Dynamic slotting with locations
-        product.locations.forEach((loc: any) => {
-          if (loc.quantity > 0) {
-            items.push({
-              sku: product.sku,
-              productName: product.product?.name || product.sku,
-              quantity: loc.quantity,
-              location: loc.location?.name || 'Unknown',
-              locationId: loc.location?.id || 'unknown',
-              pickable: loc.pickable,
-              sellable: true,
-              warehouse: product.warehouse_identifier,
-              barcode: product.product?.barcode,
-            })
-          }
-        })
-      } else if (product.on_hand > 0) {
-        // No specific locations
-        items.push({
-          sku: product.sku,
-          productName: product.product?.name || product.sku,
-          quantity: product.on_hand,
-          location: product.inventory_bin || 'General',
-          locationId: product.inventory_bin || 'general',
-          pickable: true,
-          sellable: true,
-          warehouse: product.warehouse_identifier,
-          barcode: product.product?.barcode,
-        })
-      }
+    locations.forEach((location: any) => {
+      const products = location.products?.edges || []
+      
+      products.forEach(({ node: product }: any) => {
+        if (product.quantity > 0) {
+          items.push({
+            sku: product.sku,
+            productName: product.product?.name || product.sku,
+            quantity: product.quantity,
+            location: location.name,
+            zone: location.zone,
+            pickable: location.pickable,
+            sellable: location.sellable,
+            warehouse: warehouseMap.get(location.warehouse_id) || 'Unknown',
+            warehouseId: location.warehouse_id,
+            barcode: product.product?.barcode,
+            type: 'Bin'
+          })
+        }
+      })
     })
 
     console.log(`🎉 Items: ${items.length}`)
